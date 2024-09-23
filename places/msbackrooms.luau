@@ -460,45 +460,12 @@ function Script.Functions.ESP(args: ESP)
 end
 
 function Script.Functions.DoorESP(room)
-    local door = room:WaitForChild("Door", 5)
-
-    if door then
-        local doorNumber = tonumber(room.Name) + 1
-        if isMines then
-            doorNumber += 100
-        end
-
-        local doors = 0
-        for _, door in pairs(door:GetChildren()) do
-            if door.Name == "Door" then
-                doors += 1
-            end
-        end
-
-        
-        local isDoubleDoor = doors > 1
-
-        local opened = door:GetAttribute("Opened")
-        local locked = room:GetAttribute("RequiresKey")
-
-        local doorState = opened and " [Opened]" or (locked and " [Locked]" or "")
-        local doorEsp = Script.Functions.ESP({
-            Type = "Door",
-            Object = isDoubleDoor and door or door:WaitForChild("Door"),
-            Text = string.format("Door %s %s", doorNumber, doorState),
-            Color = Options.DoorEspColor.Value,
-            IsDoubleDoor = isDoubleDoor
-        })
-
-        door:GetAttributeChangedSignal("Opened"):Connect(function()
-            doorEsp.Text = string.format("Door %s [Opened]", doorNumber)
-        end)
-    end
+    
 end 
 
 function Script.Functions.ObjectiveESP(child)
     -- Backdoor
-    if child.Name == "TimerLever" then
+   --[[ if child.Name == "TimerLever" then
         Script.Functions.ESP({
             Type = "Objective",
             Object = child,
@@ -586,7 +553,7 @@ function Script.Functions.ObjectiveESP(child)
                 Color = Options.ObjectiveEspColor.Value
             })
         end
-    end
+    end]]--
 end
 
 function Script.Functions.EntityESP(entity)
@@ -3961,54 +3928,6 @@ end))
 Library:GiveSignal(UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if UserInputService:GetFocusedTextBox() then return end
-
-    if isFools and Library.IsMobile and input.UserInputType == Enum.UserInputType.Touch and Toggles.GrabBananaJeffToggle.Value then
-        if Script.Temp.HoldingItem then
-            return Script.Functions.ThrowBananaJeff()
-        end
-
-        local touchPos = input.Position
-        local ray = workspace.CurrentCamera:ViewportPointToRay(touchPos.X, touchPos.Y)
-        local result = workspace:Raycast(ray.Origin, ray.Direction * 500, RaycastParams.new())
-        
-        local target = result and result.Instance
-
-        if target and isnetowner(target) then
-            if target.Name == "BananaPeel" then
-                Script.Temp.ItemHoldTrack:Play()
-
-                if not target:FindFirstChildOfClass("BodyGyro") then
-                    Instance.new("BodyGyro", target)
-                end
-
-                if not target:GetAttribute("Clip") then target:SetAttribute("Clip", target.CanCollide) end
-
-                target.CanTouch = false
-                target.CanCollide = false
-
-                Script.Temp.HoldingItem = target
-            elseif target:FindFirstAncestorWhichIsA("Model").Name == "JeffTheKiller" then
-                Script.Temp.ItemHoldTrack:Play()
-
-                local jeff = target:FindFirstAncestorWhichIsA("Model")
-
-                for _, i in ipairs(jeff:GetDescendants()) do
-                    if i:IsA("BasePart") then
-                        if not i:GetAttribute("Clip") then i:SetAttribute("Clip", target.CanCollide) end
-
-                        i.CanTouch = false
-                        i.CanCollide = false
-                    end
-                end
-
-                if not jeff.PrimaryPart:FindFirstChildOfClass("BodyGyro") then
-                    Instance.new("BodyGyro", jeff.PrimaryPart)
-                end
-
-                Script.Temp.HoldingItem = jeff.PrimaryPart
-            end
-        end
-    end
 end))
 
 Library:GiveSignal(RunService.RenderStepped:Connect(function()
@@ -4076,147 +3995,7 @@ Library:GiveSignal(RunService.RenderStepped:Connect(function()
             end
         end
 
-        if Toggles.AutoInteract.Value and (Library.IsMobile or Options.AutoInteractKey:GetState()) then
-            local prompts = Script.Functions.GetAllPromptsWithCondition(function(prompt)
-                return PromptTable.Aura[prompt.Name] ~= nil
-            end)
-
-            for _, prompt: ProximityPrompt in pairs(prompts) do
-                if prompt:FindFirstAncestorOfClass("Model").Name == "DoorFake" then continue end
-                if prompt.Parent:GetAttribute("JeffShop") then continue end
-                if prompt.Parent:GetAttribute("PropType") == "Battery" and character:FindFirstChildOfClass("Tool") and character:FindFirstChildOfClass("Tool"):GetAttribute("RechargeProp") ~= "Battery" then continue end 
-
-                task.spawn(function()
-                    -- checks if distance can interact with prompt and if prompt can be interacted again
-                    if Script.Functions.DistanceFromCharacter(prompt.Parent) < prompt.MaxActivationDistance and (not prompt:GetAttribute("Interactions" .. localPlayer.Name) or PromptTable.Aura[prompt.Name] or table.find(PromptTable.AuraObjects, prompt.Parent.Name)) then
-                        fireproximityprompt(prompt)
-                    end
-                end)
-            end
-        end
-
-        if Toggles.SpamOtherTools.Value and  (Library.IsMobile or Options.SpamOtherTools:GetState()) then
-            for _, player in pairs(Players:GetPlayers()) do
-                if player == localPlayer then continue end
-                
-                for _, tool in pairs(player.Backpack:GetChildren()) do
-                    tool:FindFirstChildOfClass("RemoteEvent"):FireServer()
-                end
-                
-                local toolRemote = player.Character:FindFirstChild("Remote", true)
-                if toolRemote then
-                    toolRemote:FireServer()
-                end
-            end
-        end
-
-        if isMines then
-            if Toggles.AutoAnchorSolver.Value and latestRoom.Value == 50 and mainUI.MainFrame:FindFirstChild("AnchorHintFrame") then
-                local prompts = Script.Functions.GetAllPromptsWithCondition(function(prompt)
-                    return prompt.Name == "ActivateEventPrompt" and prompt.Parent:IsA("Model") and prompt.Parent.Name == "MinesAnchor" and not prompt.Parent:GetAttribute("Activated")
-                end)
-
-                local CurrentGameState = {
-                    DesignatedAnchor = mainUI.MainFrame.AnchorHintFrame.AnchorCode.Text,
-                    AnchorCode = mainUI.MainFrame.AnchorHintFrame.Code.Text
-                }
-
-                for _, prompt in pairs(prompts) do
-                    task.spawn(function()
-                        local Anchor = prompt.Parent
-                        local CurrentAnchor = Anchor.Sign.TextLabel.Text
-
-                        if not (Script.Functions.DistanceFromCharacter(prompt.Parent) < prompt.MaxActivationDistance) then return end
-                        if CurrentAnchor ~= CurrentGameState.DesignatedAnchor then return end
-
-                        local result = Anchor:FindFirstChildOfClass("RemoteFunction"):InvokeServer(CurrentGameState.AnchorCode)
-                        if result then
-                            Script.Functions.Alert("Solved Anchor " .. CurrentAnchor .. " successfully!", 5)
-                        end
-                    end)
-                end
-            end
-        end
-
-        if isFools then
-            local HoldingItem = Script.Temp.HoldingItem
-            if HoldingItem and not isnetowner(HoldingItem) then
-                Script.Functions.Alert("You are no longer holding the item due to network owner change!", 5)
-                Script.Temp.HoldingItem = nil
-            end
-    
-            if HoldingItem and Toggles.GrabBananaJeffToggle.Value then
-                if HoldingItem:FindFirstChildOfClass("BodyGyro") then
-                    HoldingItem.CanTouch = false
-                    HoldingItem.CFrame = character.RightHand.CFrame * CFrame.Angles(math.rad(-90), 0, 0)
-                end
-            end
-            
-            if not Library.IsMobile then
-                local isGrabbing = Options.GrabBananaJeff:GetState() and Toggles.GrabBananaJeffToggle.Value
-                local isThrowing = Options.ThrowBananaJeff:GetState()
-                
-                if isThrowing and isnetowner(HoldingItem) then
-                    Script.Functions.ThrowBananaJeff()
-                end
-                
-                local target = localPlayer:GetMouse().Target
-                
-                if not target then return end
-                if isGrabbing and isnetowner(target) then
-                    if target.Name == "BananaPeel" then
-                        Script.Temp.ItemHoldTrack:Play()
-    
-                        if not target:FindFirstChildOfClass("BodyGyro") then
-                            Instance.new("BodyGyro", target)
-                        end
-    
-                        if not target:GetAttribute("Clip") then target:SetAttribute("Clip", target.CanCollide) end
-    
-                        target.CanTouch = false
-                        target.CanCollide = false
-    
-                        Script.Temp.HoldingItem = target
-                    elseif target:FindFirstAncestorWhichIsA("Model").Name == "JeffTheKiller" then
-                        Script.Temp.ItemHoldTrack:Play()
-    
-                        local jeff = target:FindFirstAncestorWhichIsA("Model")
-    
-                        for _, i in ipairs(jeff:GetDescendants()) do
-                            if i:IsA("BasePart") then
-                                if not i:GetAttribute("Clip") then i:SetAttribute("Clip", target.CanCollide) end
-    
-                                i.CanTouch = false
-                                i.CanCollide = false
-                            end
-                        end
-    
-                        if not jeff.PrimaryPart:FindFirstChildOfClass("BodyGyro") then
-                            Instance.new("BodyGyro", jeff.PrimaryPart)
-                        end
-    
-                        Script.Temp.HoldingItem = jeff.PrimaryPart
-                    end
-                end
-            end
-        end
-
-        if Toggles.AntiEyes.Value and (workspace:FindFirstChild("Eyes") or workspace:FindFirstChild("BackdoorLookman")) then
-            if not isFools then
-                -- lsplash meanie for removing other args in motorreplication
-                remotesFolder.MotorReplication:FireServer(-649)
-            else
-                remotesFolder.MotorReplication:FireServer(0, -90, 0, false)
-            end
-        end
     end
-
-    task.spawn(function()
-        for guidance, part in pairs(Script.Temp.Guidance) do
-            if not guidance:IsDescendantOf(workspace) then continue end
-            part.CFrame = guidance.CFrame
-        end
-    end)
 end))
 
 --// Script Load \\--
@@ -4229,14 +4008,6 @@ Library:OnUnload(function()
     -- disconnect hook
     if mtHook then hookmetamethod(game, "__namecall", mtHook) end
     if _fixDistanceFromCharacter then hookmetamethod(localPlayer, "__namecall", _fixDistanceFromCharacter) end
-
-    if fakeReviveEnabled then
-        for _, connection in pairs(fakeReviveConnections) do
-            if connection.Connected then connection:Disconnect() end
-        end
-
-        table.clear(fakeReviveConnections)
-    end
 
     if character then
         local speedBoostAssignObj = isFools and humanoid or character
@@ -4252,49 +4023,9 @@ Library:OnUnload(function()
     else
         Lighting.Ambient = Color3.new(0, 0, 0)
     end
-
-    if entityModules then
-        local module = entityModules:FindFirstChild("_Shade")
-
-        if module then
-            module.Name = "Shade"
-        end
-    end
-
-    if mainGame then
-        local module = mainGame:FindFirstChild("_Screech", true)
-
-        if module then
-            module.Name = "Screech"
-        end
-    end
-
-    if mainGameSrc then
-        mainGameSrc.fovtarget = 70
-    end
-
     if rootPart then
         local existingProperties = rootPart.CustomPhysicalProperties
         rootPart.CustomPhysicalProperties = PhysicalProperties.new(Script.Temp.NoAccelValue, existingProperties.Friction, existingProperties.Elasticity, existingProperties.FrictionWeight, existingProperties.ElasticityWeight)
-    end
-
-    if isBackdoor then
-        local clientRemote = floorReplicated.ClientRemote
-        local internal_temp_msbackrooms = clientRemote:FindFirstChild("_msbackrooms")
-
-        if internal_temp_msbackrooms and #internal_temp_msbackrooms:GetChildren() ~= 0 then
-            for i,v in pairs(internal_temp_msbackrooms:GetChildren()) do
-                v.Parent = clientRemote.Haste
-            end
-        end
-
-        internal_temp_msbackrooms:Destroy()
-    end
-
-    if isRooms then
-        if workspace:FindFirstChild("_internal_msbackrooms_pathfinding_nodes") then
-            workspace:FindFirstChild("_internal_msbackrooms_pathfinding_nodes"):Destroy()
-        end
     end
 
     if _msbackrooms_custom_captions then
