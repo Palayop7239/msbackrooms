@@ -136,22 +136,22 @@ local PromptTable = {
 
 --local entityModules = ReplicatedStorage:WaitForChild("ClientModules"):WaitForChild("EntityModules")
 
-local gameData = ReplicatedStorage:WaitForChild("GameData")
-local floor = gameData:WaitForChild("Floor")
-local latestRoom = gameData:WaitForChild("LatestRoom")
+--local gameData = ReplicatedStorage:WaitForChild("GameData")
+--local floor = gameData:WaitForChild("Floor")
+--local latestRoom = gameData:WaitForChild("LatestRoom")
 
-local liveModifiers = ReplicatedStorage:WaitForChild("LiveModifiers")
+--local liveModifiers = ReplicatedStorage:WaitForChild("LiveModifiers")
 
-local floorReplicated
+--local floorReplicated
 local remotesFolder
 
 local camera = workspace.CurrentCamera
 local localPlayer = Players.LocalPlayer
 
 local playerGui = localPlayer.PlayerGui
-local mainUI = playerGui:WaitForChild("MainUI")
-local mainGame = mainUI:WaitForChild("Initiator"):WaitForChild("Main_Game")
-local mainGameSrc = require(mainGame)
+local mainUI = playerGui:WaitForChild("MainGUI")
+--local mainGame = mainUI:WaitForChild("Initiator"):WaitForChild("Main_Game")
+--local mainGameSrc = require(mainGame)
 
 local playerScripts = localPlayer.PlayerScripts
 local controlModule = require(playerScripts:WaitForChild("PlayerModule"):WaitForChild("ControlModule"))
@@ -167,14 +167,14 @@ local velocityLimiter
 local mtHook
 local _fixDistanceFromCharacter
 
-local isMines = floor.Value == "Mines"
-local isRooms = floor.Value == "Rooms"
-local isHotel = floor.Value == "Hotel"
-local isBackdoor = floor.Value == "Backdoor"
-local isFools = floor.Value == "Fools"
+--local isMines = floor.Value == "Mines"
+--local isRooms = floor.Value == "Rooms"
+--local isHotel = floor.Value == "Hotel"
+--local isBackdoor = floor.Value == "Backdoor"
+--local isFools = floor.Value == "Fools"
 
-local currentRoom = localPlayer:GetAttribute("CurrentRoom") or 0
-local nextRoom = currentRoom + 1
+--local currentRoom = localPlayer:GetAttribute("CurrentRoom") or 0
+--local nextRoom = currentRoom + 1
 
 local speedBypassing = false
 local fakeReviveDebounce = false
@@ -183,12 +183,12 @@ local fakeReviveConnections = {}
 local lastSpeed = 0
 local bypassed = false
 
-if not isFools then
-    floorReplicated = ReplicatedStorage:WaitForChild("FloorReplicated")
-    remotesFolder = ReplicatedStorage:WaitForChild("RemotesFolder")
-else
-    remotesFolder = ReplicatedStorage:WaitForChild("EntityInfo")
-end
+--if not isFools then
+    --floorReplicated = ReplicatedStorage:WaitForChild("FloorReplicated")
+    --remotesFolder = ReplicatedStorage:WaitForChild("RemotesFolder")
+--else
+   -- remotesFolder = ReplicatedStorage:WaitForChild("EntityInfo")
+--end
 
 type ESP = {
     Color: Color3,
