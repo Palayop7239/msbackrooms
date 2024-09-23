@@ -211,11 +211,11 @@ local Options = getgenv().Linoria.Options
 local Toggles = getgenv().Linoria.Toggles
 
 local Window = Library:CreateWindow({
-	Title = "msbackrooms v2",
+	Title = "msbackrooms frfr",
 	Center = true,
 	AutoShow = true,
 	Resizable = true,
-	ShowCustomCursor = true,
+	ShowCustomCursor = false,
 	TabPadding = 2,
 	MenuFadeTime = 0
 })
@@ -280,7 +280,7 @@ end
 function Script.Functions.GetNearestAssetWithCondition(condition: () -> ())
     local nearestDistance = math.huge
     local nearest
-    for _, room in pairs(workspace.CurrentRooms:GetChildren()) do
+    --[[for _, room in pairs(workspace.CurrentRooms:GetChildren()) do
         if not room:FindFirstChild("Assets") then continue end
 
         for i, v in pairs(room.Assets:GetChildren()) do
@@ -289,7 +289,7 @@ function Script.Functions.GetNearestAssetWithCondition(condition: () -> ())
                 nearest = v
             end
         end
-    end
+    end]]--
 
     return nearest
 end
