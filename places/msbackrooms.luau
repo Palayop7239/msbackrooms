@@ -3558,37 +3558,6 @@ Toggles.NoCutscenes:OnChanged(function(value)
     end
 end)
 
-Toggles.TranslucentHidingSpot:OnChanged(function(value)
-    if value and character:GetAttribute("Hiding") then
-        for _, obj in pairs(workspace.CurrentRooms:GetDescendants()) do
-            if not obj:IsA("ObjectValue") and obj.Name ~= "HiddenPlayer" then continue end
-
-            if obj.Value == character then
-                task.spawn(function()
-                    local affectedParts = {}
-                    for _, v in pairs(obj.Parent:GetChildren()) do
-                        if not v:IsA("BasePart") then continue end
-
-                        v.Transparency = Options.HidingTransparency.Value
-                        table.insert(affectedParts, v)
-                    end
-
-                    repeat task.wait()
-                        for _, part in pairs(affectedParts) do
-                            task.wait()
-                            part.Transparency = Options.HidingTransparency.Value
-                        end
-                    until not character:GetAttribute("Hiding") or not Toggles.TranslucentHidingSpot.Value
-                    
-                    for _, v in pairs(affectedParts) do
-                        v.Transparency = 0
-                    end
-                end)
-
-                break
-            end
-        end
-    end
 end)
 
 --// Connections \\--
@@ -3606,60 +3575,10 @@ mtHook = hookmetamethod(game, "__namecall", function(self, ...)
     return mtHook(self, ...)
 end)
 
-if isBackdoor then
-    local clientRemote = floorReplicated.ClientRemote
-    local haste_incoming_progress = nil
-
-    Library:GiveSignal(clientRemote.Haste.Remote.OnClientEvent:Connect(function(value)
-        if not value and Toggles.NotifyEntity.Value then
-            haste_incoming_progress = Instance.new("Part", workspace) do
-                haste_incoming_progress.Anchored = true
-                haste_incoming_progress.CanCollide = false
-                haste_incoming_progress.Name = "_internal_msbackrooms_haste"
-                haste_incoming_progress.Transparency = 1
-            end
-
-            Script.Functions.Alert("Haste is incoming, please find a lever ASAP!", haste_incoming_progress)
-            repeat task.wait() until not haste_incoming_progress or not Toggles.NotifyEntity.Value or not character:GetAttribute("Alive")
-            if haste_incoming_progress then haste_incoming_progress:Destroy() end
-        end
-        
-        if value and haste_incoming_progress then
-            haste_incoming_progress:Destroy()
-        end
-    end))
 end
 
 Library:GiveSignal(ProximityPromptService.PromptTriggered:Connect(function(prompt, player)
     if player ~= localPlayer or not character then return end
-    
-    local isDoorLock = prompt.Name == "UnlockPrompt" and prompt.Parent.Name == "Lock" and not prompt.Parent.Parent:GetAttribute("Opened")
-    local isSkeletonDoor = prompt.Name == "SkullPrompt" and prompt.Parent.Name == "SkullLock" and not (prompt.Parent:FindFirstChild("Door") and prompt.Parent.Door.Transparency == 1)
-    local isChestBox = prompt.Name == "ActivateEventPrompt" and prompt.Parent.Name == "ChestBoxLocked" and prompt.Parent:GetAttribute("Locked")
-    local isRoomsDoorLock = prompt.Parent.Parent.Parent.Name == "RoomsDoor_Entrance" and prompt.Enabled
-    
-    if isDoorLock or isSkeletonDoor or isChestBox or isRoomsDoorLock then
-        local equippedTool = character:FindFirstChildOfClass("Tool")
-        local toolId = equippedTool and equippedTool:GetAttribute("ID")
-
-        if Toggles.InfItems.Value and equippedTool and equippedTool:GetAttribute("UniversalKey") then
-            task.wait(isChestBox and 0.15 or 0)
-            remotesFolder.DropItem:FireServer(equippedTool)
-
-            task.spawn(function()
-                equippedTool.Destroying:Wait() 
-                task.wait(0.15)
-
-                local itemPickupPrompt = Script.Functions.GetNearestPromptWithCondition(function(prompt)
-                    return prompt.Name == "ModulePrompt" and prompt.Parent:GetAttribute("Tool_ID") == toolId
-                end)
-
-                if itemPickupPrompt then
-                    fireproximityprompt(itemPickupPrompt)
-                end
-            end)
-        end
-    end
 end))
 
 Library:GiveSignal(workspace.ChildAdded:Connect(function(child)
@@ -3673,57 +3592,36 @@ Library:GiveSignal(workspace.ChildAdded:Connect(function(child)
                 if child:IsDescendantOf(workspace) then
                     local entityName = Script.Functions.GetShortName(child.Name)
 
-                    if isFools and child.Name == "RushMoving" then
-                        entityName = child.PrimaryPart.Name:gsub("New", "")
-                    end
+                  --  if isFools and child.Name == "RushMoving" then
+                    --    entityName = child.PrimaryPart.Name:gsub("New", "")
+                    --end
 
                     if Toggles.EntityESP.Value then
                         Script.Functions.EntityESP(child)  
                     end
 
-                    if Toggles.NotifyEntity.Value then
-                        Script.Functions.Alert(entityName .. " has spawned!")
-                    end
+                  --  if Toggles.NotifyEntity.Value then
+                      --  Script.Functions.Alert(entityName .. " has spawned!")
+                   -- end
                 end
             end)
         elseif EntityNotify[child.Name] and Toggles.NotifyEntity.Value then
             Script.Functions.Alert(EntityNotify[child.Name])
         end
 
-        if isFools then
-            if Toggles.AntiBananaPeel.Value and child.Name == "BananaPeel" then
-                child.CanTouch = false
-            end
-
-            if Toggles.AntiJeffClient.Value and child.Name == "JeffTheKiller" then
-                for i, v in pairs(child:GetDescendants()) do
-                    if v:IsA("BasePart") then
-                        v.CanTouch = false
-                    end
-                end
-            end
-
-            if Toggles.AntiJeffServer.Value and child.Name == "JeffTheKiller" then
-                task.spawn(function()
-                    repeat task.wait() until isnetowner(child.PrimaryPart)
-                    child:FindFirstChildOfClass("Humanoid").Health = 0
-                end)
-            end
-        end
-
     end)
 end))
 
-for _, drop in pairs(workspace.Drops:GetChildren()) do
-    task.spawn(Script.Functions.SetupDropConnection, drop)
-end
-Library:GiveSignal(workspace.Drops.ChildAdded:Connect(function(child)
-    task.spawn(Script.Functions.SetupDropConnection, child)
-end))
+--for _, drop in pairs(workspace.Drops:GetChildren()) do
+    --task.spawn(Script.Functions.SetupDropConnection, drop)
+--end
+--Library:GiveSignal(workspace.Drops.ChildAdded:Connect(function(child)
+   -- task.spawn(Script.Functions.SetupDropConnection, child)
+--end))
 
-for _, room in pairs(workspace.CurrentRooms:GetChildren()) do
-    task.spawn(Script.Functions.SetupRoomConnection, room)
-end
+--for _, room in pairs(workspace.CurrentRooms:GetChildren()) do
+  --  task.spawn(Script.Functions.SetupRoomConnection, room)
+--end
 Library:GiveSignal(workspace.CurrentRooms.ChildAdded:Connect(function(room)
     task.spawn(Script.Functions.SetupRoomConnection, room)
 end))
@@ -3748,63 +3646,63 @@ end))
 
 Library:GiveSignal(localPlayer.CharacterAdded:Connect(function(newCharacter)
     task.delay(1, Script.Functions.SetupCharacterConnection, newCharacter)
-    if fakeReviveEnabled then
-        fakeReviveEnabled = false
+  --  if fakeReviveEnabled then
+     --   fakeReviveEnabled = false
 
-        for _, connection in pairs(fakeReviveConnections) do
-            connection:Disconnect()
-        end
+      --  for _, connection in pairs(fakeReviveConnections) do
+        --    connection:Disconnect()
+       -- end
         
-        table.clear(fakeReviveConnections)
+       -- table.clear(fakeReviveConnections)
 
-        if Toggles.FakeRevive.Value then
-            Script.Functions.Alert("You have revived, fake revive has stopped working, enable it again to start fake revive")
-            Toggles.FakeRevive:SetValue(false)
-        end
+       -- if Toggles.FakeRevive.Value then
+         --   Script.Functions.Alert("You have revived, fake revive has stopped working, enable it again to start fake revive")
+           -- Toggles.FakeRevive:SetValue(false)
+      --  end
 
-        if isMines and Toggles.EnableJump.Value then
-            Options.SpeedSlider:SetMax((Toggles.TheMinesAnticheatBypass.Value and bypassed) and 45 or 3)
-        else
-            Options.SpeedSlider:SetMax((isMines and Toggles.TheMinesAnticheatBypass.Value and bypassed) and 45 or 7)
-        end
+       -- if isMines and Toggles.EnableJump.Value then
+        --    Options.SpeedSlider:SetMax((Toggles.TheMinesAnticheatBypass.Value and bypassed) and 45 or 3)
+       -- else
+         --   Options.SpeedSlider:SetMax((isMines and Toggles.TheMinesAnticheatBypass.Value and bypassed) and 45 or 7)
+      --  end
 
-        Options.FlySpeed:SetMax((isMines and Toggles.TheMinesAnticheatBypass.Value and bypassed) and 75 or 22)
-    end
+       -- Options.FlySpeed:SetMax((isMines and Toggles.TheMinesAnticheatBypass.Value and bypassed) and 75 or 22)
+    --end
 end))
 
 Library:GiveSignal(localPlayer:GetAttributeChangedSignal("Alive"):Connect(function()
-    alive = localPlayer:GetAttribute("Alive")
+   -- alive = localPlayer:GetAttribute("Alive")
 
-    if not alive and isFools and Toggles.InfRevives.Value then
-        task.delay(1.25, function()
-            remotesFolder.Revive:FireServer()
-        end)
-    end
+   -- if not alive and isFools and Toggles.InfRevives.Value then
+        --task.delay(1.25, function()
+            --remotesFolder.Revive:FireServer()
+       -- end)
+    --end
 end))
 
 if workspace.CurrentRooms:FindFirstChild(currentRoom) then
     task.spawn(Script.Functions.SetupCurrentRoomConnection, workspace.CurrentRooms[currentRoom])
 end
 Library:GiveSignal(localPlayer:GetAttributeChangedSignal("CurrentRoom"):Connect(function()
-    currentRoom = localPlayer:GetAttribute("CurrentRoom")
-    nextRoom = currentRoom + 1
+  --  currentRoom = localPlayer:GetAttribute("CurrentRoom")
+   -- nextRoom = currentRoom + 1
 
-    local currentRoomModel = workspace.CurrentRooms:FindFirstChild(currentRoom)
-    local nextRoomModel = workspace.CurrentRooms:FindFirstChild(nextRoom)
+   -- local currentRoomModel = workspace.CurrentRooms:FindFirstChild(currentRoom)
+   -- local nextRoomModel = workspace.CurrentRooms:FindFirstChild(nextRoom)
 
-    if Toggles.DoorESP.Value then
-        for _, doorEsp in pairs(Script.ESPTable.Door) do
-            doorEsp.Destroy()
-        end
+   -- if Toggles.DoorESP.Value then
+       -- for _, doorEsp in pairs(Script.ESPTable.Door) do
+          --  doorEsp.Destroy()
+      --  end
 
-        if currentRoomModel then
-            task.spawn(Script.Functions.DoorESP, currentRoomModel)
-        end
+       -- if currentRoomModel then
+           -- task.spawn(Script.Functions.DoorESP, currentRoomModel)
+       -- end
 
-        if nextRoomModel then
-            task.spawn(Script.Functions.DoorESP, nextRoomModel)
-        end
-    end
+       -- if nextRoomModel then
+           -- task.spawn(Script.Functions.DoorESP, nextRoomModel)
+        --end
+  --  end
     if Toggles.ObjectiveESP.Value then
         for _, objectiveEsp in pairs(Script.ESPTable.Objective) do
             objectiveEsp.Destroy()
@@ -3836,8 +3734,8 @@ Library:GiveSignal(localPlayer:GetAttributeChangedSignal("CurrentRoom"):Connect(
         end
     end
 
-    if currentRoomModel then
-        for _, asset in pairs(currentRoomModel:GetDescendants()) do
+   -- if currentRoomModel then
+        for _, asset in pairs(game.Workspace:GetDescendants()) do
             if Toggles.ObjectiveESP.Value then
                 task.spawn(Script.Functions.ObjectiveESP, asset)
             end
@@ -3863,12 +3761,12 @@ Library:GiveSignal(localPlayer:GetAttributeChangedSignal("CurrentRoom"):Connect(
             end
         end
     
-        Script.Functions.SetupCurrentRoomConnection(currentRoomModel)
-    end
+       -- Script.Functions.SetupCurrentRoomConnection(currentRoomModel)
+   -- end
 end))
 
 Library:GiveSignal(playerGui.ChildAdded:Connect(function(child)
-    if child.Name == "MainUI" then
+   --[[ if child.Name == "MainUI" then
         mainUI = child
 
         task.delay(1, function()
@@ -3904,7 +3802,7 @@ Library:GiveSignal(playerGui.ChildAdded:Connect(function(child)
                 end
             end
         end)
-    end
+    end]]--
 end))
 
 Library:GiveSignal(Lighting:GetPropertyChangedSignal("Ambient"):Connect(function()
@@ -3942,24 +3840,24 @@ Library:GiveSignal(RunService.RenderStepped:Connect(function()
         camera.CFrame = camera.CFrame * CFrame.new(1.5, -0.5, 6.5)
     end
 
-    if mainGameSrc then
-        mainGameSrc.fovtarget = Options.FOV.Value
+   -- if mainGameSrc then
+       -- mainGameSrc.fovtarget = Options.FOV.Value
 
-        if Toggles.NoCamShake.Value then
-            mainGameSrc.csgo = CFrame.new()
-        end
-    end
+        --if Toggles.NoCamShake.Value then
+           -- mainGameSrc.csgo = CFrame.new()
+        --end
+   -- end
 
     if character then
         character:SetAttribute("ShowInFirstPerson", isThirdPersonEnabled)
         if character:FindFirstChild("Head") then character.Head.LocalTransparencyModifier = isThirdPersonEnabled and 0 or 1 end
 
         local speedBoostAssignObj = isFools and humanoid or character
-        if isMines and Toggles.FastLadder.Value and character:GetAttribute("Climbing") then
-            character:SetAttribute("SpeedBoostBehind", 50)
-        else
-            speedBoostAssignObj:SetAttribute("SpeedBoostBehind", Options.SpeedSlider.Value)
-        end
+       -- if isMines and Toggles.FastLadder.Value and character:GetAttribute("Climbing") then
+           -- character:SetAttribute("SpeedBoostBehind", 50)
+       -- else
+          --  speedBoostAssignObj:SetAttribute("SpeedBoostBehind", Options.SpeedSlider.Value)
+       -- end
 
         if rootPart then
             rootPart.CanCollide = not Toggles.Noclip.Value
@@ -3987,13 +3885,13 @@ Library:GiveSignal(RunService.RenderStepped:Connect(function()
             character.LowerTorso.CanCollide = not Toggles.Noclip.Value
         end
 
-        if Toggles.DoorReach.Value and workspace.CurrentRooms:FindFirstChild(latestRoom.Value) then
+        --[[if Toggles.DoorReach.Value and workspace.CurrentRooms:FindFirstChild(latestRoom.Value) then
             local door = workspace.CurrentRooms[latestRoom.Value]:FindFirstChild("Door")
 
             if door and door:FindFirstChild("ClientOpen") then
                 door.ClientOpen:FireServer()
             end
-        end
+        end]]--
 
     end
 end))
