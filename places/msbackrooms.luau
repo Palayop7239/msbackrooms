@@ -52,7 +52,7 @@ local Toggles = getgenv().Linoria.Toggles
 local ESPLibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/deividcomsono/MS-ESP/refs/heads/main/source.lua"))()
 
 local ChestsTable = {"Crate","Medical Box","Metal cabinet","Ammo Box"}
-local EntitiesTable = {"Duller","Howler","Melee Raider","DamageBox","Bacteria","Bone Thief","EnragedFemaleDeathMoth","SkinStealer","Smiler","SmilerSpider","Stalker"}
+local EntitiesTable = {"Duller","Howler","Melee Raider","DamageBox","Bacteria","Bone Thief","EnragedFemaleDeathMoth","SkinStealer","Smiler","SmilerSpider","Stalker","PartyGoer"}
 
 local Players = game:GetService("Players")
 function Script.Functions.ESP(args: ESP)
