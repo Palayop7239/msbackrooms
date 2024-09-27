@@ -1,5 +1,46 @@
 -- New example script written by wally
 -- You can suggest changes with a pull request or something
+type ESP = {
+    Color: Color3,
+    IsEntity: boolean,
+    IsDoubleDoor: boolean,
+    Object: Instance,
+    Offset: Vector3,
+    Text: string,
+    TextParent: Instance,
+    Type: string,
+}
+local Script = {
+    Binded = {}, -- ty geo for idea :smartindividual:
+    Connections = {},
+    FeatureConnections = {
+        Clip = {},
+        Door = {},
+        Player = {},
+    },
+    ESPTable = {
+        Chest = {},
+        Door = {},
+        Entity = {},
+        SideEntity = {},
+        Gold = {},
+        Guiding = {},
+        Item = {},
+        Objective = {},
+        Player = {},
+        HidingSpot = {},
+        None = {}
+    },
+    Functions = {
+        Minecart = {}
+    },
+    Temp = {
+        AnchorFinished = {},
+        FlyBody = nil,
+        Guidance = {},
+        PaintingDebounce = false
+    }
+}
 
 local repo = 'https://raw.githubusercontent.com/mstudio45/LinoriaLib/main/'
 
@@ -8,7 +49,101 @@ local ThemeManager = loadstring(game:HttpGet(repo .. 'addons/ThemeManager.lua'))
 local SaveManager = loadstring(game:HttpGet(repo .. 'addons/SaveManager.lua'))()
 local Options = getgenv().Linoria.Options
 local Toggles = getgenv().Linoria.Toggles
+local ESPLibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/deividcomsono/MS-ESP/refs/heads/main/source.lua"))()
 
+local ChestsTable = {"Crate","Medical Box","Metal cabinet","Ammo Box"}
+local EntitiesTable = {"Duller","Howler","Melee Raider","DamageBox","Bacteria","Bone Thief","EnragedFemaleDeathMoth","SkinStealer","Smiler","SmilerSpider","Stalker"}
+
+local Players = game:GetService("Players")
+function Script.Functions.ESP(args: ESP)
+    if not args.Object then return Script.Functions.Warn("ESP Object is nil") end
+
+    local ESPManager = {
+        Object = args.Object,
+        Text = args.Text or "No Text",
+        Color = args.Color or Color3.new(),
+        Offset = args.Offset or Vector3.zero,
+        IsEntity = args.IsEntity or false,
+        IsDoubleDoor = args.IsDoubleDoor or false,
+        Type = args.Type or "None",
+
+        Invisible = false,
+        Humanoid = nil
+    }
+
+    if ESPManager.IsEntity and ESPManager.Object.PrimaryPart then
+        if ESPManager.Object.PrimaryPart.Transparency == 1 then
+            ESPManager.Invisible = true
+            ESPManager.Object.PrimaryPart.Transparency = 0.99
+        end
+
+        local humanoid = ESPManager.Object:FindFirstChildOfClass("Humanoid")
+        if not humanoid then humanoid = Instance.new("Humanoid", ESPManager.Object) end
+        ESPManager.Humanoid = humanoid
+    end
+
+    local highlight = ESPLibrary.ESP.Highlight({
+        Name = ESPManager.Text,
+        Model = ESPManager.Object,
+        StudsOffset = ESPManager.Offset,
+
+        FillColor = ESPManager.Color,
+        OutlineColor = ESPManager.Color,
+        TextColor = ESPManager.Color,
+        TextSize = Options.ESPTextSize.Value or 16,
+
+        Tracer = {
+            Enabled = Toggles.ESPTracer.Value,
+            From = Options.ESPTracerStart.Value,
+            Color = ESPManager.Color
+        },
+
+        OnDestroy = function()
+            if ESPManager.Object.PrimaryPart and ESPManager.Invisible then ESPManager.Object.PrimaryPart.Transparency = 1 end
+            if ESPManager.Humanoid then ESPManager.Humanoid:Destroy() end
+        end
+    })
+
+    table.insert(Script.ESPTable[args.Type], highlight)
+end
+function Script.Functions.ChestESP(chest)
+    local locked = chest:GetAttribute("Locked")
+
+    Script.Functions.ESP({
+        Type = "Chest",
+        Object = chest,
+        Text = chest.Name, --if locked then "Chest [Locked]" else "Chest",
+        Color = Options.ChestEspColor.Value
+    })
+end
+function Script.Functions.EntityESP(entity)
+
+    Script.Functions.ESP({
+        Type = "Entity",
+        Object = entity,
+        Text = entity.Name,
+        Color = Options.EntityEspColor.Value
+    })
+end
+function Script.Functions.PlayerESP(player: Player)
+    if not (player.Character and player.Character.PrimaryPart and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0) then return end
+
+    local playerEsp = Script.Functions.ESP({
+        Type = "Player",
+        Object = player.Character,
+        Text = string.format("%s [%.1f]", player.DisplayName, player.Character.Humanoid.Health),
+        TextParent = player.Character.PrimaryPart,
+        Color = Options.PlayerEspColor.Value
+    })
+
+    player.Character.Humanoid.HealthChanged:Connect(function(newHealth)
+        if newHealth > 0 then
+            playerEsp.Text = string.format("%s [%.1f]", player.DisplayName, newHealth)
+        else
+            playerEsp.Destroy()
+        end
+    end)
+end
 local Window = Library:CreateWindow({
 	-- Set Center to true if you want the menu to appear in the center
 	-- Set AutoShow to true if you want the menu to appear when it is created
@@ -17,13 +152,13 @@ local Window = Library:CreateWindow({
 	-- Position and Size are also valid options here
 	-- but you do not need to define them unless you are changing them :)
 
-	Title = 'Example menu',
+	Title = 'msbackrooms | Da Backrooms | dev build',
 	Center = true,
 	AutoShow = true,
 	Resizable = true,
 	ShowCustomCursor = true,
 	TabPadding = 8,
-	MenuFadeTime = 0.2
+	MenuFadeTime = 0
 })
 
 -- CALLBACK NOTE:
@@ -35,12 +170,15 @@ local Window = Library:CreateWindow({
 local Tabs = {
 	-- Creates a new tab titled Main
 	Main = Window:AddTab('Main'),
+    --ESPTab = Window:AddTab('Esp OLD'),
+    Visuals = Window:AddTab('Visuals'),
+    Levels = Window:AddTab('Levels'),
 	['UI Settings'] = Window:AddTab('UI Settings'),
 }
 
 -- Groupbox and Tabbox inherit the same functions
 -- except Tabboxes you have to call the functions on a tab (Tabbox:AddTab(name))
-local LeftGroupBox = Tabs.Main:AddLeftGroupbox('Groupbox')
+--local LeftGroupBox = Tabs.ESPTab:AddLeftGroupbox('ESP Settings')
 
 -- We can also get our Main tab via the following code:
 -- local LeftGroupBox = Window.Tabs.Main:AddLeftGroupbox('Groupbox')
@@ -58,41 +196,88 @@ local Tab2 = TabBox:AddTab('Tab 2')
 
 -- Groupbox:AddToggle
 -- Arguments: Index, Options
-LeftGroupBox:AddToggle('MyToggle', {
-	Text = 'This is a toggle',
-	Default = true, -- Default value (true / false)
-	Tooltip = 'This is a tooltip', -- Information shown when you hover over the toggle
+local ESPTabBox = Tabs.Visuals:AddLeftTabbox() do
+    local ESPTab = ESPTabBox:AddTab("ESP") do
+        ESPTab:AddToggle("EntityESP", {
+            Text = "Entity",
+            Default = false,
+        }):AddColorPicker("EntityEspColor", {
+            Default = Color3.new(1, 0, 0),
+        })
+        ESPTab:AddToggle("ChestESP", {
+            Text = "Chest",
+            Default = false,
+        }):AddColorPicker("ChestEspColor", {
+            Default = Color3.new(1, 1, 0),
+        })
+    
+        ESPTab:AddToggle("PlayerESP", {
+            Text = "Player",
+            Default = false,
+        }):AddColorPicker("PlayerEspColor", {
+            Default = Color3.new(1, 1, 1),
+        })
+    end
 
-	Callback = function(Value)
-		print('[cb] MyToggle changed to:', Value)
-	end
-}):AddColorPicker('ColorPicker1', {
-	Default = Color3.new(1, 0, 0),
-	Title = 'Some color1', -- Optional. Allows you to have a custom color picker title (when you open it)
-	Transparency = 0, -- Optional. Enables transparency changing for this color picker (leave as nil to disable)
+    local ESPSettingsTab = ESPTabBox:AddTab("Settings") do
+        ESPSettingsTab:AddToggle("ESPHighlight", {
+            Text = "Enable Highlight",
+            Default = true,
+        })
 
-	Callback = function(Value)
-		print('[cb] Color changed!', Value)
-	end
-}):AddColorPicker('ColorPicker2', {
-	Default = Color3.new(0, 1, 0),
-	Title = 'Some color2',
-	Transparency = 0,
+        ESPSettingsTab:AddToggle("ESPTracer", {
+            Text = "Enable Tracer",
+            Default = true,
+        })
+    
+        ESPSettingsTab:AddToggle("ESPRainbow", {
+            Text = "Rainbow ESP",
+            Default = false,
+        })
+    
+        ESPSettingsTab:AddToggle("ESPDistance", {
+            Text = "Show Distance",
+            Default = true,
+            Visible = false, -- Not implemented in mstudio45's ESP library
+        })
+    
+        ESPSettingsTab:AddSlider("ESPFillTransparency", {
+            Text = "Fill Transparency",
+            Default = 0.75,
+            Min = 0,
+            Max = 1,
+            Rounding = 2
+        })
+    
+        ESPSettingsTab:AddSlider("ESPOutlineTransparency", {
+            Text = "Outline Transparency",
+            Default = 0,
+            Min = 0,
+            Max = 1,
+            Rounding = 2
+        })
+    
+        ESPSettingsTab:AddSlider("ESPTextSize", {
+            Text = "Text Size",
+            Default = 22,
+            Min = 16,
+            Max = 26,
+            Rounding = 0
+        })
 
-	Callback = function(Value)
-		print('[cb] Color changed!', Value)
-	end
-}):AddColorPicker('ColorPicker3', {
-	Default = Color3.new(0, 0, 1),
-	Title = 'Some color3',
-	Transparency = 0,
+        ESPSettingsTab:AddDropdown("ESPTracerStart", {
+            AllowNull = false,
+            Values = {"Bottom", "Center", "Top", "Mouse"},
+            Default = "Bottom",
+            Multi = false,
 
-	Callback = function(Value)
-		print('[cb] Color changed!', Value)
-	end
-})
-
-
+            Text = "Tracer Start Position"
+        })
+    end
+end
+Toggles.ESPTracer:OnChanged(function(value)
+    ESPLibrary.Tracers.Set(value)
+end)
 -- Fetching a toggle object for later use:
 -- Toggles.MyToggle.Value
 
@@ -101,13 +286,81 @@ LeftGroupBox:AddToggle('MyToggle', {
 -- To get the state of the toggle you do toggle.Value
 
 -- Calls the passed function when the toggle is updated
-Toggles.MyToggle:OnChanged(function()
+Toggles.ChestESP:OnChanged(function(value)
 	-- here we get our toggle object & then get its value
-	print('MyToggle changed to:', Toggles.MyToggle.Value)
+        if value then
+            local currentRoomModel = workspace:WaitForChild("Loot")
+            if currentRoomModel then
+                for _, chest in pairs(currentRoomModel:GetDescendants()) do
+                    if table.find(ChestsTable, chest.Name) then
+                        Script.Functions.ChestESP(chest)
+                    end
+                end
+            end
+        else
+            for _, esp in pairs(Script.ESPTable.Chest) do
+                esp.Destroy()
+            end
+        end
+end)
+Options.ChestEspColor:OnChanged(function(value)
+    for _, esp in pairs(Script.ESPTable.Chest) do
+        esp.Update({
+            FillColor = value,
+            OutlineColor = value,
+            TextColor = value,
+        })
+    end
 end)
 
+Toggles.EntityESP:OnChanged(function(value)
+	-- here we get our toggle object & then get its value
+        if value then
+            local currentRoomModel = workspace:WaitForChild("Monsters")
+            if currentRoomModel then
+                for _, thing in pairs(currentRoomModel:GetDescendants()) do
+                    if table.find(EntitiesTable, thing.Name) then
+                        Script.Functions.EntityESP(thing)
+                    end
+                end
+            end
+        else
+            for _, esp in pairs(Script.ESPTable.Chest) do
+                esp.Destroy()
+            end
+        end
+end)
+Options.EntityEspColor:OnChanged(function(value)
+    for _, esp in pairs(Script.ESPTable.Entity) do
+        esp.Update({
+            FillColor = value,
+            OutlineColor = value,
+            TextColor = value,
+        })
+    end
+end)
+Toggles.PlayerESP:OnChanged(function(value)
+    if value then
+        for _, player in pairs(Players:GetPlayers()) do
+            if player == localPlayer or not player.Character then continue end
+            
+            Script.Functions.PlayerESP(player)
+        end
+    else
+        for _, esp in pairs(Script.ESPTable.Player) do
+            esp.Destroy()
+        end
+    end
+end)
+Options.PlayerEspColor:OnChanged(function(value)
+    for _, esp in pairs(Script.ESPTable.Player) do
+        esp.SetColor(value)
+    end
+end)
 -- This should print to the console: "My toggle state changed! New value: false"
-Toggles.MyToggle:SetValue(false)
+Toggles.ChestESP:SetValue(false)
+Toggles.PlayerESP:SetValue(false)
+Toggles.EntityESP:SetValue(false)
 
 -- 1/15/23
 -- Deprecated old way of creating buttons in favor of using a table
@@ -125,7 +378,7 @@ Toggles.MyToggle:SetValue(false)
 	You can call :AddButton on a button to add a SubButton!
 ]]
 
-local MyButton = LeftGroupBox:AddButton({
+--[[local MyButton = LeftGroupBox:AddButton({
 	Text = 'Button',
 	Func = function()
 		print('You clicked a button!')
@@ -143,7 +396,7 @@ local MyButton2 = MyButton:AddButton({
 	end,
 	DoubleClick = true, -- You will have to click this button twice to trigger the callback
 	Tooltip = 'This is the sub button (double click me!)'
-})
+})]]
 
 --[[
 	NOTE: You can chain the button methods!
@@ -155,12 +408,12 @@ local MyButton2 = MyButton:AddButton({
 
 -- Groupbox:AddLabel
 -- Arguments: Text, DoesWrap
-LeftGroupBox:AddLabel('This is a label')
-LeftGroupBox:AddLabel('This is a label\n\nwhich wraps its text!', true)
+--LeftGroupBox:AddLabel('This is a label')
+--LeftGroupBox:AddLabel('This is a label\n\nwhich wraps its text!', true)
 
 -- Groupbox:AddDivider
 -- Arguments: None
-LeftGroupBox:AddDivider()
+--LeftGroupBox:AddDivider()
 
 --[[
 	Groupbox:AddSlider
@@ -186,7 +439,7 @@ LeftGroupBox:AddDivider()
 	HideMax will only display the value instead of the value & max value of the slider
 	Compact will do the same thing
 ]]
-LeftGroupBox:AddSlider('MySlider', {
+--[[LeftGroupBox:AddSlider('MySlider', {
 	Text = 'This is my slider!',
 	Default = 0,
 	Min = 0,
@@ -197,23 +450,23 @@ LeftGroupBox:AddSlider('MySlider', {
 	Callback = function(Value)
 		print('[cb] MySlider was changed! New value:', Value)
 	end
-})
+})]]
 
 -- Options is a table added to getgenv() by the library
 -- You index Options with the specified index, in this case it is 'MySlider'
 -- To get the value of the slider you do slider.Value
 
-local Number = Options.MySlider.Value
-Options.MySlider:OnChanged(function()
-	print('MySlider was changed! New value:', Options.MySlider.Value)
-end)
+--local Number = Options.MySlider.Value
+--Options.MySlider:OnChanged(function()
+	--print('MySlider was changed! New value:', Options.MySlider.Value)
+--end)
 
 -- This should print to the console: "MySlider was changed! New value: 3"
-Options.MySlider:SetValue(3)
+--Options.MySlider:SetValue(3)
 
 -- Groupbox:AddInput
 -- Arguments: Idx, Info
-LeftGroupBox:AddInput('MyTextbox', {
+--[[LeftGroupBox:AddInput('MyTextbox', {
 	Default = 'My textbox!',
 	Numeric = false, -- true / false, only allows numbers
 	Finished = false, -- true / false, only calls callback when you press enter
@@ -228,16 +481,16 @@ LeftGroupBox:AddInput('MyTextbox', {
 	Callback = function(Value)
 		print('[cb] Text updated. New text:', Value)
 	end
-})
+})]]
 
-Options.MyTextbox:OnChanged(function()
-	print('Text updated. New text:', Options.MyTextbox.Value)
-end)
+--Options.MyTextbox:OnChanged(function()
+	--print('Text updated. New text:', Options.MyTextbox.Value)
+--end)
 
 -- Groupbox:AddDropdown
 -- Arguments: Idx, Info
 
-LeftGroupBox:AddDropdown('MyDropdown', {
+--[[LeftGroupBox:AddDropdown('MyDropdown', {
 	Values = { 'This', 'is', 'a', 'dropdown' },
 	Default = 1, -- number index of the value / string
 	Multi = false, -- true / false, allows multiple choices to be selected
@@ -248,16 +501,16 @@ LeftGroupBox:AddDropdown('MyDropdown', {
 	Callback = function(Value)
 		print('[cb] Dropdown got changed. New value:', Value)
 	end
-})
+})]]
 
-Options.MyDropdown:OnChanged(function()
-	print('Dropdown got changed. New value:', Options.MyDropdown.Value)
-end)
+--Options.MyDropdown:OnChanged(function()
+	--print('Dropdown got changed. New value:', Options.MyDropdown.Value)
+--end)
 
-Options.MyDropdown:SetValue('This')
+--Options.MyDropdown:SetValue('This')
 
 -- Multi dropdowns
-LeftGroupBox:AddDropdown('MyMultiDropdown', {
+--[[LeftGroupBox:AddDropdown('MyMultiDropdown', {
 	-- Default is the numeric index (e.g. "This" would be 1 since it if first in the values list)
 	-- Default also accepts a string as well
 
@@ -273,9 +526,9 @@ LeftGroupBox:AddDropdown('MyMultiDropdown', {
 	Callback = function(Value)
 		print('[cb] Multi dropdown got changed:', Value)
 	end
-})
+})]]
 
-Options.MyMultiDropdown:OnChanged(function()
+--[[Options.MyMultiDropdown:OnChanged(function()
 	-- print('Dropdown got changed. New value:', )
 	print('Multi dropdown got changed:')
 	for key, value in next, Options.MyMultiDropdown.Value do
@@ -286,9 +539,9 @@ end)
 Options.MyMultiDropdown:SetValue({
 	This = true,
 	is = true,
-})
+})]]
 
-LeftGroupBox:AddDropdown('MyPlayerDropdown', {
+--[[LeftGroupBox:AddDropdown('MyPlayerDropdown', {
 	SpecialType = 'Player',
 	Text = 'A player dropdown',
 	Tooltip = 'This is a tooltip', -- Information shown when you hover over the dropdown
@@ -296,14 +549,14 @@ LeftGroupBox:AddDropdown('MyPlayerDropdown', {
 	Callback = function(Value)
 		print('[cb] Player dropdown got changed:', Value)
 	end
-})
+})]]
 
 -- Label:AddColorPicker
 -- Arguments: Idx, Info
 
 -- You can also ColorPicker & KeyPicker to a Toggle as well
 
-LeftGroupBox:AddLabel('Color'):AddColorPicker('ColorPicker', {
+--[[LeftGroupBox:AddLabel('Color'):AddColorPicker('ColorPicker', {
 	Default = Color3.new(0, 1, 0), -- Bright green
 	Title = 'Some color', -- Optional. Allows you to have a custom color picker title (when you open it)
 	Transparency = 0, -- Optional. Enables transparency changing for this color picker (leave as nil to disable)
@@ -311,19 +564,19 @@ LeftGroupBox:AddLabel('Color'):AddColorPicker('ColorPicker', {
 	Callback = function(Value)
 		print('[cb] Color changed!', Value)
 	end
-})
+})]]
 
-Options.ColorPicker:OnChanged(function()
-	print('Color changed!', Options.ColorPicker.Value)
-	print('Transparency changed!', Options.ColorPicker.Transparency)
-end)
+--Options.ColorPicker:OnChanged(function()
+	--print('Color changed!', Options.ColorPicker.Value)
+	--print('Transparency changed!', Options.ColorPicker.Transparency)
+--end)
 
-Options.ColorPicker:SetValueRGB(Color3.fromRGB(0, 255, 140))
+--Options.ColorPicker:SetValueRGB(Color3.fromRGB(0, 255, 140))
 
 -- Label:AddKeyPicker
 -- Arguments: Idx, Info
 
-LeftGroupBox:AddLabel('Keybind'):AddKeyPicker('KeyPicker', {
+--[[LeftGroupBox:AddLabel('Keybind'):AddKeyPicker('KeyPicker', {
 	-- SyncToggleState only works with toggles.
 	-- It allows you to make a keybind which has its state synced with its parent toggle
 
@@ -359,9 +612,9 @@ end)
 
 Options.KeyPicker:OnChanged(function()
 	print('Keybind changed!', Options.KeyPicker.Value)
-end)
+end)]]
 
-task.spawn(function()
+--[[task.spawn(function()
 	while true do
 		wait(1)
 
@@ -375,12 +628,24 @@ task.spawn(function()
 	end
 end)
 
-Options.KeyPicker:SetValue({ 'MB2', 'Toggle' }) -- Sets keybind to MB2, mode to Hold
+Options.KeyPicker:SetValue({ 'MB2', 'Toggle' })]] -- Sets keybind to MB2, mode to Hold
 
 -- Long text label to demonstrate UI scrolling behaviour.
 local LeftGroupBox2 = Tabs.Main:AddLeftGroupbox('Groupbox #2');
 LeftGroupBox2:AddLabel('Oh no...\nThis label spans multiple lines!\n\nWe\'re gonna run out of UI space...\nJust kidding! Scroll down!\n\n\nHello from below!', true)
-
+if game.PlaceId == 10178836156 then
+    local LV1TabBox = Tabs.Levels:AddLeftGroupbox('Level 1');
+    --local LV1TabBox = Tabs.Main:AddLeftTabbox()
+    local CodeButton = LV1TabBox:AddButton({
+        Text = 'Reveal Elevator Code',
+        Func = function()
+            --print('You clicked a sub button!')
+            Library:Notify(("The elevator code is : "..game.Workspace.Symbols.TriangleCode.SurfaceGui.TextLabel.Text:gsub('%D+', '')..game.Workspace.Symbols.SquareCode.SurfaceGui.TextLabel.Text:gsub('%D+', '')..game.Workspace.Symbols.PentagonCode.SurfaceGui.TextLabel.Text:gsub('%D+', '')..game.Workspace.Symbols.CircleCode.SurfaceGui.TextLabel.Text:gsub('%D+', '')), nil, 4590657391)
+        end,
+        DoubleClick = false, -- You will have to click this button twice to trigger the callback
+        Tooltip = 'Reveal the elevator code to exit the level.'
+    }) 
+end
 local TabBox = Tabs.Main:AddRightTabbox() -- Add Tabbox on right side
 
 -- Anything we can do in a Groupbox, we can do in a Tabbox tab (AddToggle, AddSlider, AddLabel, etc etc...)
@@ -422,34 +687,34 @@ SecretDepbox:SetupDependencies({
 
 -- Library functions
 -- Sets the watermark visibility
-Library:SetWatermarkVisibility(true)
+Library:SetWatermarkVisibility(false)
 
 -- Example of dynamically-updating watermark with common traits (fps and ping)
-local FrameTimer = tick()
-local FrameCounter = 0;
-local FPS = 60;
+--local FrameTimer = tick()
+--local FrameCounter = 0;
+--local FPS = 60;
 
 local WatermarkConnection = game:GetService('RunService').RenderStepped:Connect(function()
-	FrameCounter += 1;
+	--FrameCounter += 1;
 
-	if (tick() - FrameTimer) >= 1 then
-		FPS = FrameCounter;
-		FrameTimer = tick();
-		FrameCounter = 0;
-	end;
+	--if (tick() - FrameTimer) >= 1 then
+		--FPS = FrameCounter;
+		--FrameTimer = tick();
+		--FrameCounter = 0;
+	--end;
 
-	Library:SetWatermark(('LinoriaLib demo | %s fps | %s ms'):format(
-		math.floor(FPS),
-		math.floor(game:GetService('Stats').Network.ServerStatsItem['Data Ping']:GetValue())
-	));
+	--Library:SetWatermark(('LinoriaLib demo | %s fps | %s ms'):format(
+		--math.floor(FPS),
+		--math.floor(game:GetService('Stats').Network.ServerStatsItem['Data Ping']:GetValue())
+	--));
 end);
 
-Library.KeybindFrame.Visible = true; -- todo: add a function for this
+Library.KeybindFrame.Visible = false; -- todo: add a function for this
 
 Library:OnUnload(function()
 	WatermarkConnection:Disconnect()
 
-	print('Unloaded!')
+	print('msbackrooms unloaded successfully !')
 	Library.Unloaded = true
 end)
 
@@ -481,8 +746,8 @@ SaveManager:SetIgnoreIndexes({ 'MenuKeybind' })
 -- use case for doing it this way:
 -- a script hub could have themes in a global folder
 -- and game configs in a separate folder per game
-ThemeManager:SetFolder('MyScriptHub')
-SaveManager:SetFolder('MyScriptHub/specific-game')
+ThemeManager:SetFolder('msbackrooms')
+SaveManager:SetFolder('msbackrooms/dabackrooms')
 
 -- Builds our config menu on the right side of our tab
 SaveManager:BuildConfigSection(Tabs['UI Settings'])
@@ -494,3 +759,4 @@ ThemeManager:ApplyToTab(Tabs['UI Settings'])
 -- You can use the SaveManager:LoadAutoloadConfig() to load a config
 -- which has been marked to be one that auto loads!
 SaveManager:LoadAutoloadConfig()
+--loadstring(game:HttpGet("https://raw.githubusercontent.com/PalaCraftYT/msbackrooms/main/places/msbackrooms.lua"))()
