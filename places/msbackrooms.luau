@@ -49,7 +49,7 @@ local ChestsTable = {"Crate","Medical Box","Metal cabinet","Ammo Box"}
 local EntitiesTable = {"Duller","Howler","Melee Raider","DamageBox","Bacteria","Bone Thief","EnragedFemaleDeathMoth","SkinStealer","Smiler","SmilerSpider","Stalker"}
 
 local Players = game:GetService("Players")
-function Script.Functions.ESP(args: ESP)
+function Script.Functions.ESP(args)
     if not args.Object then return Script.Functions.Warn("ESP Object is nil") end
 
     local ESPManager = {
@@ -119,7 +119,7 @@ function Script.Functions.EntityESP(entity)
         Color = Options.EntityEspColor.Value
     })
 end
-function Script.Functions.PlayerESP(player: Player)
+function Script.Functions.PlayerESP(player)
     if not (player.Character and player.Character.PrimaryPart and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0) then return end
 
     local playerEsp = Script.Functions.ESP({
